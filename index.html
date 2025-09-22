@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<title>Reflexão de Imagem com Matriz</title>
+<style>
+  body { font-family: Arial; text-align:center; margin-top: 20px; }
+  canvas { border:1px solid black; margin-top:10px; }
+  .canvas-container { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<h2>Reflexão de Imagem com Visualização de Matriz</h2>
+<input type="file" id="imgInput" accept="image/*"><br><br>
+
+<label for="reflection">Escolha o eixo de reflexão:</label>
+<select id="reflection">
+  <option value="x">Eixo X</option>
+  <option value="y">Eixo Y</option>
+</select>
+<button onclick="applyReflection()">Aplicar Reflexão</button>
+
+<div class="canvas-container">
+  <div>
+    <p>Imagem Original / Refletida</p>
+    <canvas id="canvas"></canvas>
+  </div>
+  <div>
+    <p>Matriz de blocos (visualização)</p>
+    <canvas id="matrixCanvas"></canvas>
+  </div>
+</div>
+
+<script>
+let canvas = document.getElementById("canvas");
+let ctx = canvas.getContext("2d");
+let matrixCanvas = document.getElementById("matrixCanvas");
+let matrixCtx = matrixCanvas.getContext("2d");
+let img = new Image();
+
+
+document.getElementById("imgInput").addEventListener("change", function(e) {
+    let file = e.target.files[0];
+    if(!file) return;
+    let reader = new FileReader();
+    reader.onload = function(event) {
+        img.src = event.target.result;
+    }
+    reader.readAsDataURL(file);
+});
+
+
+img.onload = function() {
+    canvas.width = img.width;
+    canvas.height = img.height;
+    matrixCanvas.width = img.width;
+    matrixCanvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+    drawMatrixBlocks(); 
+}
+
+//  Define a inagem em 20 blocos (nao mexer, nao sei como arrumar)
+function drawMatrixBlocks() {
+    let blockSize = 20;
+    let w = canvas.width;
+    let h = canvas.height;
+
+
+    matrixCtx.clearRect(0, 0, w, h);
+
+    for(let y = 0; y < h; y += blockSize){
+        for(let x = 0; x < w; x += blockSize){
+           //Codigo n feito por mim, nao mecher, mais basicamente ele pega a cor dominante do bloco
+            let imageData = ctx.getImageData(x, y, blockSize, blockSize);
+            let data = imageData.data;
+            let r=0, g=0, b=0, count = 0;
+            for(let i=0; i<data.length; i+=4){
+                r += data[i];
+                g += data[i+1];
+                b += data[i+2];
+                count++;
+            }
+            r = Math.floor(r/count);
+            g = Math.floor(g/count);
+            b = Math.floor(b/count);
+
+            //prenche com a cor dominante
+            matrixCtx.fillStyle = `rgb(${r},${g},${b})`;
+            matrixCtx.fillRect(x, y, blockSize, blockSize);
+
+            //desenha as linhas
+            matrixCtx.strokeStyle = "rgba(0,0,0,0.3)";
+            matrixCtx.strokeRect(x, y, blockSize, blockSize);
+        }
+    }
+}
+
+// Função principal para aplicar a reflexão
+function applyReflection() {
+    if(!img.src) return;
+    let choice = document.getElementById("reflection").value;
+    
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let data = imageData.data;
+    let w = canvas.width;
+    let h = canvas.height;
+
+    let newImage = ctx.createImageData(w, h);
+    let newData = newImage.data;
+
+
+    for(let y = 0; y < h; y++){
+        for(let x = 0; x < w; x++){
+            let srcIndex = (y * w + x) * 4;  
+            let newX = choice === "y" ? w - 1 - x : x; //codigos principais eh nessesario o w por limitaçoes do canvas
+            let newY = choice === "x" ? h - 1 - y : y; //Codigos principais  eh necessario o h por limitaçoes do canvas
+            let destIndex = (newY * w + newX) * 4;      
+
+           
+            newData[destIndex] = data[srcIndex];       
+            newData[destIndex+1] = data[srcIndex+1];   
+            newData[destIndex+2] = data[srcIndex+2];   
+            newData[destIndex+3] = data[srcIndex+3];   
+        }
+    }
+
+    ctx.putImageData(newImage, 0, 0); 
+    drawMatrixBlocks(); // redesenha a matriz visualizada, nao sei que milagre essa função faz, pq eu nsa baeria redesenhar
+}
+</script>
+
+</body>
+</html>
